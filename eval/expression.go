@@ -3,8 +3,8 @@ package eval
 type (
 	// Expr built by the engine through the DSL functions.
 	Expr interface {
-		// Name is the qualified name of the DSL expression e.g. "resource bottle".
-		Name() string
+		// EvalName is the qualified name of the DSL expression e.g. "resource bottle".
+		EvalName() string
 	}
 
 	// A Root expression represents an entry point to the executed DSL: upon execution the
@@ -72,8 +72,8 @@ const Top TopExpr = "top-level"
 
 // DSL returns the DSL function.
 func (f DSLFunc) DSL() func() {
-	return f.(func())
+	return f
 }
 
 // Name of top expression is "top-level" to help with error messages.
-func (t TopExpr) Name() string { return string(t) }
+func (t TopExpr) EvalName() string { return string(t) }

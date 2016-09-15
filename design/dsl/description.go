@@ -1,6 +1,7 @@
 package dsl
 
 import "github.com/goadesign/goa/design"
+import "github.com/goadesign/goa/eval"
 
 // Description sets the expression description.
 //
@@ -14,7 +15,7 @@ import "github.com/goadesign/goa/design"
 //
 func Description(d string) {
 	switch expr := eval.Current().(type) {
-	case *design.ServiceExpr:
+	case *design.APIExpr:
 		expr.Description = d
 	case *design.AttributeExpr:
 		expr.Description = d

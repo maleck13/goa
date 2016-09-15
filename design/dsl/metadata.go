@@ -49,22 +49,22 @@ import (
 //        })
 //
 func Metadata(name string, value ...string) {
-	switch expr := eval.CurrentExpr().(type) {
-	case design.ContainerExpr:
+	switch expr := eval.Current().(type) {
+	case design.CompositeExpr:
 		att := expr.Attribute()
 		if att.Metadata == nil {
-			att.Metadata = make(map[string][]string)
+			att.Metadata = make(design.MetadataExpr)
 		}
 		att.Metadata[name] = append(att.Metadata[name], value...)
 	case *design.AttributeExpr:
 		if expr.Metadata == nil {
-			expr.Metadata = make(map[string][]string)
+			expr.Metadata = make(design.MetadataExpr)
 		}
 		expr.Metadata[name] = append(expr.Metadata[name], value...)
 
-	case *design.ServiceExpr:
+	case *design.APIExpr:
 		if expr.Metadata == nil {
-			expr.Metadata = make(map[string][]string)
+			expr.Metadata = make(design.MetadataExpr)
 		}
 		expr.Metadata[name] = append(expr.Metadata[name], value...)
 

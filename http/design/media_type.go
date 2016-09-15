@@ -53,7 +53,7 @@ type (
 	// overridden.
 	ViewExpr struct {
 		// Set of properties included in view
-		*FieldExpr
+		*AttributeExpr
 		// Name of view
 		Name string
 		// Parent media Type
@@ -89,7 +89,7 @@ var (
 	// ErrorMedia is the built-in media type for error responses.
 	ErrorMedia = &MediaTypeExpr{
 		UserTypeExpr: &UserTypeExpr{
-			FieldExpr: &FieldExpr{
+			AttributeExpr: &AttributeExpr{
 				Type:        errorMediaType,
 				Description: "Error response media type",
 				Example: map[string]interface{}{
@@ -107,30 +107,30 @@ var (
 	}
 
 	errorMediaType = Object{
-		"id": &FieldExpr{
+		"id": &AttributeExpr{
 			Type:        String,
 			Description: "a unique identifier for this particular occurrence of the problem.",
 			Example:     "3F1FKVRR",
 		},
-		"status": &FieldExpr{
+		"status": &AttributeExpr{
 			Type:        String,
 			Description: "the HTTP status code applicable to this problem, expressed as a string value.",
 			Example:     "400",
 		},
-		"code": &FieldExpr{
+		"code": &AttributeExpr{
 			Type:        String,
 			Description: "an application-specific error code, expressed as a string value.",
 			Example:     "invalid_value",
 		},
-		"detail": &FieldExpr{
+		"detail": &AttributeExpr{
 			Type:        String,
 			Description: "a human-readable explanation specific to this occurrence of the problem.",
 			Example:     "Value of ID must be an integer",
 		},
-		"meta": &FieldExpr{
+		"meta": &AttributeExpr{
 			Type: &Map{
-				KeyType:  &FieldExpr{Type: String},
-				ElemType: &FieldExpr{Type: Any},
+				KeyType:  &AttributeExpr{Type: String},
+				ElemType: &AttributeExpr{Type: Any},
 			},
 			Description: "a meta object containing non-standard meta-information about the error.",
 			Example:     map[string]interface{}{"timestamp": 1458609066},
@@ -138,8 +138,8 @@ var (
 	}
 
 	errorMediaView = &ViewExpr{
-		FieldExpr: &FieldExpr{Type: errorMediaType},
-		Name:      "default",
+		AttributeExpr: &AttributeExpr{Type: errorMediaType},
+		Name:          "default",
 	}
 )
 
@@ -148,8 +148,8 @@ var (
 func NewMediaTypeExpr(name, identifier string, dsl func()) *MediaTypeExpr {
 	return &MediaTypeExpr{
 		UserTypeExpr: &UserTypeExpr{
-			FieldExpr: &FieldExpr{Type: Object{}, DSLFunc: dsl},
-			TypeName:  name,
+			AttributeExpr: &AttributeExpr{Type: Object{}, DSLFunc: dsl},
+			TypeName:      name,
 		},
 		Identifier: identifier,
 	}
@@ -157,6 +157,17 @@ func NewMediaTypeExpr(name, identifier string, dsl func()) *MediaTypeExpr {
 
 // Kind implements DataKind.
 func (m *MediaTypeExpr) Kind() Kind { return MediaTypeKind }
+
+// Dup creates a deep copy of the media type given a deep copy of its attribute.
+func (m *MediaTypeExpr) Dup(att *design.AttributeExpr) UserType {
+	return &MediaTypeExpr{
+		UserTypeExpr: m.UserTypeExpr.Dup(att),
+		Identifier:   actual.Identifier,
+		Links:        actual.Links,
+		Views:        actual.Views,
+		Resource:     actual.Resource,
+	}
+}
 
 // IsError returns true if the media type is implemented via a goa struct.
 func (m *MediaTypeExpr) IsError() bool {
@@ -241,7 +252,7 @@ func (m *MediaTypeExpr) projectSingle(view, viewID string) (p *MediaTypeExpr, li
 	if !ok {
 		return nil, nil, fmt.Errorf("unknown view %#v", view)
 	}
-	viewObj := v.Type.ToObject()
+	viewObj := v.Type.(Object)
 
 	// Compute validations - view may not have all fields
 	var val *ValidationExpr
@@ -273,7 +284,7 @@ func (m *MediaTypeExpr) projectSingle(view, viewID string) (p *MediaTypeExpr, li
 		Identifier: viewID,
 		UserTypeExpr: &UserTypeExpr{
 			TypeName: typeName,
-			FieldExpr: &FieldExpr{
+			AttributeExpr: &AttributeExpr{
 				Description: desc,
 				Type:        Dup(v.Type),
 				Validation:  val,
@@ -281,15 +292,15 @@ func (m *MediaTypeExpr) projectSingle(view, viewID string) (p *MediaTypeExpr, li
 		},
 	}
 	p.Views = map[string]*ViewExpr{"default": {
-		Name:      "default",
-		FieldExpr: DupAtt(v.FieldExpr),
-		Parent:    p,
+		Name:          "default",
+		AttributeExpr: DupAtt(v.AttributeExpr),
+		Parent:        p,
 	}}
 
 	proj := ProjectedMTExpr{View: view, MediaType: p}
 	ProjectedMediaTypes[viewID] = proj
-	projectedObj := p.Type.ToObject()
-	mtObj := m.Type.ToObject()
+	projectedObj := p.Type.(Object)
+	mtObj := m.Type.(Object)
 	for n := range viewObj {
 		if n == "links" {
 			linkObj := make(Object)
@@ -307,7 +318,7 @@ func (m *MediaTypeExpr) projectSingle(view, viewID string) (p *MediaTypeExpr, li
 				if err != nil {
 					return nil, nil, err
 				}
-				linkObj[n] = &FieldExpr{Type: vl, Validation: mtt.Validation, Metadata: mtAtt.Metadata}
+				linkObj[n] = &AttributeExpr{Type: vl, Validation: mtt.Validation, Metadata: mtAtt.Metadata}
 			}
 			proj.Links = linkObj
 		} else {
@@ -348,18 +359,18 @@ func (p *Projector) projectCollection(m *MediaTypeExpr, view, viewID string) (*M
 	proj := &MediaTypeExpr{
 		Identifier: viewID,
 		UserTypeExpr: &UserTypeExpr{
-			FieldExpr: &FieldExpr{
+			AttributeExpr: &AttributeExpr{
 				Description: desc,
-				Type:        &Array{ElemType: &FieldExpr{Type: pe}},
+				Type:        &Array{ElemType: &AttributeExpr{Type: pe}},
 				Example:     m.Example,
 			},
 			TypeName: pe.TypeName + "Collection",
 		},
 	}
 	proj.Views = map[string]*ViewExpr{"default": &ViewExpr{
-		FieldExpr: DupAtt(pe.Views["default"].FieldExpr),
-		Name:      "default",
-		Parent:    p,
+		AttributeExpr: DupAtt(pe.Views["default"].AttributeExpr),
+		Name:          "default",
+		Parent:        p,
 	}}
 
 	// Run the DSL that was created by the CollectionOf function
@@ -397,8 +408,8 @@ func (l *LinkExpr) Context() string {
 }
 
 // Attribute returns the linked attribute.
-func (l *LinkExpr) Attribute() *FieldExpr {
-	p := l.Parent.ToObject()
+func (l *LinkExpr) Attribute() *AttributeExpr {
+	p := l.Parent.(Object)
 	if p == nil {
 		return nil
 	}

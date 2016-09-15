@@ -1,6 +1,7 @@
 package dsl
 
-import "github.com/goadesign/rest/design"
+import "github.com/goadesign/goa/http/design"
+import "github.com/goadesign/goa/design/dsl"
 
 // Metadata is a set of key/value pairs that can be assigned to an object. Each value consists of a
 // slice of strings so that multiple invocation of the Metadata function on the same target using
@@ -78,6 +79,6 @@ func Metadata(name string, value ...string) {
 		expr.Metadata[name] = append(expr.Metadata[name], value...)
 
 	default:
-		eval.IncompatibleDSL()
+		dsl.Metadata(name, value...)
 	}
 }

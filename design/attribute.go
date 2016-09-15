@@ -1,11 +1,13 @@
 package design
 
+import "github.com/goadesign/goa/eval"
+
 type (
 	// AttributeExpr defines a object field with optional description, default value and
 	// validations.
 	AttributeExpr struct {
 		// DSLFunc contains the DSL used to initialize the expression.
-		*eval.DSLFunc
+		eval.DSLFunc
 		// Attribute type
 		Type DataType
 		// Attribute reference type if any
@@ -15,11 +17,16 @@ type (
 		// Optional validations
 		Validation *ValidationExpr
 		// Metadata is a list of key/value pairs
-		Metadata *MetadataExpr
+		Metadata MetadataExpr
 		// Optional member default value
 		DefaultValue interface{}
-		// Optional member example value
-		Example interface{}
+	}
+
+	// CompositeExpr defines a generic composite expression that contains an attribute.
+	// This makes it possible for plugins to use attributes in their own data structures.
+	CompositeExpr interface {
+		// Attribute returns the composite expression embedded attribute.
+		Attribute() *AttributeExpr
 	}
 
 	// ValidationExpr contains validation rules for an attribute.
@@ -51,11 +58,9 @@ type (
 	}
 )
 
-// DataStructure implementation
-
-// Expr returns the field definition.
-func (a *AttributeExpr) Expr() *AttributeExpr {
-	return a
+// EvalName returns the name used by the DSL evaluation.
+func (a *AttributeExpr) EvalName() string {
+	return "attribute"
 }
 
 // Walk traverses the data structure recursively and calls the given function once
@@ -70,12 +75,12 @@ func walk(at *AttributeExpr, walker func(*AttributeExpr) error, seen map[string]
 	if err := walker(at); err != nil {
 		return err
 	}
-	walkUt := func(ut *UserTypeExpr) error {
-		if _, ok := seen[ut.TypeName]; ok {
+	walkUt := func(ut UserType) error {
+		if _, ok := seen[ut.Name()]; ok {
 			return nil
 		}
-		seen[ut.TypeName] = true
-		return walk(ut.AttributeExpr, walker, seen)
+		seen[ut.Name()] = true
+		return walk(ut.Attribute(), walker, seen)
 	}
 	switch actual := at.Type.(type) {
 	case Primitive:
@@ -93,12 +98,85 @@ func walk(at *AttributeExpr, walker func(*AttributeExpr) error, seen map[string]
 				return err
 			}
 		}
-	case *UserTypeExpr:
+	case UserType:
 		return walkUt(actual)
-	case *MediaTypeExpr:
-		return walkUt(actual.UserTypeExpr)
 	default:
 		panic("unknown field type") // bug
 	}
 	return nil
+}
+
+// Context returns the generic definition name used in error messages.
+func (v *ValidationExpr) Context() string {
+	return "validation"
+}
+
+// Merge merges other into v.
+func (v *ValidationExpr) Merge(other *ValidationExpr) {
+	if v.Values == nil {
+		v.Values = other.Values
+	}
+	if v.Format == "" {
+		v.Format = other.Format
+	}
+	if v.Pattern == "" {
+		v.Pattern = other.Pattern
+	}
+	if v.Minimum == nil || (other.Minimum != nil && *v.Minimum > *other.Minimum) {
+		v.Minimum = other.Minimum
+	}
+	if v.Maximum == nil || (other.Maximum != nil && *v.Maximum < *other.Maximum) {
+		v.Maximum = other.Maximum
+	}
+	if v.MinLength == nil || (other.MinLength != nil && *v.MinLength > *other.MinLength) {
+		v.MinLength = other.MinLength
+	}
+	if v.MaxLength == nil || (other.MaxLength != nil && *v.MaxLength < *other.MaxLength) {
+		v.MaxLength = other.MaxLength
+	}
+	v.AddRequired(other.Required)
+}
+
+// AddRequired merges the required fields from other into v
+func (v *ValidationExpr) AddRequired(required []string) {
+	for _, r := range required {
+		found := false
+		for _, rr := range v.Required {
+			if r == rr {
+				found = true
+				break
+			}
+		}
+		if !found {
+			v.Required = append(v.Required, r)
+		}
+	}
+}
+
+// HasRequiredOnly returns true if the validation only has the Required field with a non-zero value.
+func (v *ValidationExpr) HasRequiredOnly() bool {
+	if len(v.Values) > 0 {
+		return false
+	}
+	if v.Format != "" || v.Pattern != "" {
+		return false
+	}
+	if (v.Minimum != nil) || (v.Maximum != nil) || (v.MaxLength != nil) {
+		return false
+	}
+	return true
+}
+
+// Dup makes a shallow dup of the validation.
+func (v *ValidationExpr) Dup() *ValidationExpr {
+	return &ValidationExpr{
+		Values:    v.Values,
+		Format:    v.Format,
+		Pattern:   v.Pattern,
+		Minimum:   v.Minimum,
+		Maximum:   v.Maximum,
+		MinLength: v.MinLength,
+		MaxLength: v.MaxLength,
+		Required:  v.Required,
+	}
 }

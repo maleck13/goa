@@ -10,11 +10,11 @@ package dsl
 //     var SumPayload = Type("SumPayload", func() {
 //         Description("Type sent to add endpoint")
 //
-//         Field("a", String)                 // Defines string field "a"
-//         Field("b", Int32, "'b' operand")   // Defines int32 field "b" with description
-//         Field("operands", ArrayOf(Int32))  // Defines int32 array field
-//         Field("ops", MapOf(String, Int32)) // Defines map<string, int32> field
-//         Field("c", SumMod)                 // Defines field using user type
+//         Attribute("a", String)                 // Define string field "a"
+//         Attribute("b", Int32, "operand")       // Define int32 field "b" with description
+//         Attribute("operands", ArrayOf(Int32))  // Define int32 array field
+//         Attribute("ops", MapOf(String, Int32)) // Define map[string]int32 field
+//         Attribute("c", SumMod)                 // Define field using user type
 //
 //         Required("a")                      // Required fields must be present
 //         Required("b", "c")                 // in serialized data.

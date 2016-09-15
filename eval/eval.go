@@ -129,7 +129,7 @@ func Current() Expr {
 func ReportError(fm string, vals ...interface{}) {
 	var suffix string
 	if cur := Context.Stack.Current(); cur != nil {
-		if name := cur.Name(); name != "" {
+		if name := cur.EvalName(); name != "" {
 			suffix = fmt.Sprintf(" in %s", name)
 		}
 	} else {
@@ -167,7 +167,7 @@ type ValidationErrors struct {
 func (verr *ValidationErrors) Error() string {
 	msg := make([]string, len(verr.Errors))
 	for i, err := range verr.Errors {
-		msg[i] = fmt.Sprintf("%s: %s", verr.Exprs[i].Name(), err)
+		msg[i] = fmt.Sprintf("%s: %s", verr.Exprs[i].EvalName(), err)
 	}
 	return strings.Join(msg, "\n")
 }
